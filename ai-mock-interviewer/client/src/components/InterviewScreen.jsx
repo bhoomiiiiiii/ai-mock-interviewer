@@ -16,6 +16,7 @@ export default function InterviewScreen({ sessionData, onFeedback, onQuit }) {
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
+  const initialInputRef = useRef("");
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -26,15 +27,21 @@ export default function InterviewScreen({ sessionData, onFeedback, onQuit }) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
     const rec = new SR();
-    rec.continuous = false;
-    rec.interimResults = false;
+    rec.continuous = true;
+    rec.interimResults = true;
     rec.lang = "en-IN";
     rec.onresult = (e) => {
-      const transcript = e.results[0][0].transcript;
-      setInput(prev => prev ? prev + " " + transcript : transcript);
+      const transcript = Array.from(e.results)
+        .map(result => result[0].transcript)
+        .join("");
+      
+      const prefix = initialInputRef.current ? initialInputRef.current + " " : "";
+      setInput(prefix + transcript);
+    };
+    rec.onerror = (e) => {
+      console.error("Mic error:", e.error);
       setIsListening(false);
     };
-    rec.onerror = () => setIsListening(false);
     rec.onend = () => setIsListening(false);
     recognitionRef.current = rec;
   }, []);
@@ -44,6 +51,7 @@ export default function InterviewScreen({ sessionData, onFeedback, onQuit }) {
     if (isListening) {
       recognitionRef.current.stop();
     } else {
+      initialInputRef.current = input;
       setIsListening(true);
       recognitionRef.current.start();
     }
