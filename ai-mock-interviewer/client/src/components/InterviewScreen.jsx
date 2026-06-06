@@ -16,18 +16,43 @@ export default function InterviewScreen({ sessionData, onFeedback, onQuit }) {
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
-  const initialInputRef = useRef("");
+  const voiceTextRef = useRef("");
+  const sendAnswerRef = useRef(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const isMutedRef = useRef(isMuted);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
+  function speak(text) {
+    if (isMutedRef.current || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const cleanText = text
+      .replace(/[*_#`~]/g, "")
+      .replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, "");
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = "en-US";
+    window.speechSynthesis.speak(utterance);
+  }
+
+  useEffect(() => {
+    speak(firstMessage);
+    return () => {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    };
+  }, [firstMessage]);
 
   // Voice input setup
   useEffect(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
     const rec = new SR();
-    rec.continuous = true;
+    rec.continuous = false; // Stop automatically when user pauses speaking
     rec.interimResults = true;
     rec.lang = "en-IN";
     rec.onresult = (e) => {
@@ -35,14 +60,19 @@ export default function InterviewScreen({ sessionData, onFeedback, onQuit }) {
         .map(result => result[0].transcript)
         .join("");
       
-      const prefix = initialInputRef.current ? initialInputRef.current + " " : "";
-      setInput(prefix + transcript);
+      setInput(transcript);
+      voiceTextRef.current = transcript;
     };
     rec.onerror = (e) => {
       console.error("Mic error:", e.error);
       setIsListening(false);
     };
-    rec.onend = () => setIsListening(false);
+    rec.onend = () => {
+      setIsListening(false);
+      if (voiceTextRef.current.trim()) {
+        sendAnswerRef.current(voiceTextRef.current);
+      }
+    };
     recognitionRef.current = rec;
   }, []);
 
@@ -51,18 +81,19 @@ export default function InterviewScreen({ sessionData, onFeedback, onQuit }) {
     if (isListening) {
       recognitionRef.current.stop();
     } else {
-      initialInputRef.current = input;
+      voiceTextRef.current = "";
       setIsListening(true);
       recognitionRef.current.start();
     }
   }
 
-  async function sendAnswer() {
-    const text = input.trim();
+  async function sendAnswer(textToSend) {
+    const text = (typeof textToSend === "string" ? textToSend : input).trim();
     if (!text || loading) return;
 
     setMessages(prev => [...prev, { from: "user", text }]);
     setInput("");
+    voiceTextRef.current = "";
     setLoading(true);
 
     try {
@@ -73,6 +104,7 @@ export default function InterviewScreen({ sessionData, onFeedback, onQuit }) {
       });
       const data = await res.json();
       setMessages(prev => [...prev, { from: "ai", text: data.message }]);
+      speak(data.message); // Speak the AI response out loud
       setQCount(c => c + 1);
       if (data.isDone) setIsDone(true);
     } catch {
@@ -81,6 +113,10 @@ export default function InterviewScreen({ sessionData, onFeedback, onQuit }) {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    sendAnswerRef.current = sendAnswer;
+  });
 
   async function getFeedback() {
     setFetchingFeedback(true);
@@ -127,6 +163,23 @@ export default function InterviewScreen({ sessionData, onFeedback, onQuit }) {
           </div>
 
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <button 
+              className="btn btn-ghost btn-sm" 
+              style={{ display: "flex", alignItems: "center", gap: "4px" }}
+              onClick={() => {
+                const newMute = !isMuted;
+                setIsMuted(newMute);
+                if (newMute) {
+                  window.speechSynthesis.cancel();
+                } else {
+                  const lastAIMessage = [...messages].reverse().find(m => m.from === "ai")?.text;
+                  if (lastAIMessage) speak(lastAIMessage);
+                }
+              }}
+              title={isMuted ? "Unmute Voice" : "Mute Voice"}
+            >
+              {isMuted ? "🔇 Muted" : "🔊 Speak"}
+            </button>
             <div style={{
               fontSize: "12px", color: "var(--muted)",
               background: "var(--surface)", border: "1px solid var(--border)",
