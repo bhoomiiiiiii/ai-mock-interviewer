@@ -58,7 +58,7 @@ export default function InterviewScreen({ sessionData, onFeedback, onQuit }) {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/answer", {
+      const res = await fetch("https://ai-mock-interviewer-sbk7.onrender.com/api/answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, answer: text }),
@@ -77,7 +77,7 @@ export default function InterviewScreen({ sessionData, onFeedback, onQuit }) {
   async function getFeedback() {
     setFetchingFeedback(true);
     try {
-      const res = await fetch("/api/feedback", {
+      const res = await fetch("https://ai-mock-interviewer-sbk7.onrender.com/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),

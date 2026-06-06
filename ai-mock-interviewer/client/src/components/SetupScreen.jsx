@@ -22,7 +22,7 @@ export default function SetupScreen({ onStart }) {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/start", {
+      const res = await fetch("https://ai-mock-interviewer-sbk7.onrender.com/api/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: role.trim(), jd: jd.trim() }),
