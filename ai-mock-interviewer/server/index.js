@@ -52,7 +52,7 @@ Provide feedback as a JSON object (respond with ONLY valid JSON, no markdown fen
 }
 
 // Start interview
-app.post("https://ai-mock-interviewer-sbk7.onrender.com/api/start", async (req, res) => {
+app.post("/api/start", async (req, res) => {
   try {
     const { role, jd } = req.body;
     if (!role) return res.status(400).json({ error: "Role is required" });
@@ -82,7 +82,7 @@ app.post("https://ai-mock-interviewer-sbk7.onrender.com/api/start", async (req, 
 });
 
 // Submit answer
-app.post("https://ai-mock-interviewer-sbk7.onrender.com/api/answer", async (req, res) => {
+app.post("/api/answer", async (req, res) => {
   try {
     const { sessionId, answer } = req.body;
     const session = sessions.get(sessionId);
@@ -116,7 +116,7 @@ app.post("https://ai-mock-interviewer-sbk7.onrender.com/api/answer", async (req,
 });
 
 // Get feedback
-app.post("https://ai-mock-interviewer-sbk7.onrender.com/api/feedback", async (req, res) => {
+app.post("/api/feedback", async (req, res) => {
   try {
     const { sessionId } = req.body;
     const session = sessions.get(sessionId);
